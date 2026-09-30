@@ -4,8 +4,8 @@ derived_from:
   raw_snapshot_id: ps-dataset-20260930-v001
   raw_manifest: data/raw/ps-dataset-20260930-v001/manifest.yaml
 preparation:
-  processed_at_utc: "2026-09-30T18:40:17.617062+00:00"
-  code_commit_sha: 484ef7f6562360a09f6b316f69614f5d6abba1a6
+  processed_at_utc: "2026-09-30T18:51:15.089919+00:00"
+  code_commit_sha: 5288b2d0f7a3d257a83b9f2f109073089feeda74
   transformations:
     - "require price_status == 'NUMERIC' AND price_paise IS NOT NULL (target availability)"
     - "drop production id/listing_number, add deterministic research_id (sha256(id)[:16])"

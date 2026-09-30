@@ -19,18 +19,15 @@ loudly if any are missing. Never prints credential values.
 """
 import argparse
 import csv
-import hashlib
-import json
 import os
-import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 import psycopg2
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-SNAPSHOT_ID = "ps-dataset-20260930-v001"
+from _common import REPO_ROOT, SNAPSHOT_ID, get_git_sha, sha256_file
+
 SNAPSHOT_DIR = REPO_ROOT / "data" / "raw" / SNAPSHOT_ID
 PAYLOAD_PATH = SNAPSHOT_DIR / "payload" / "property_listings_bangalore_residential_sale.csv"
 
@@ -133,23 +130,6 @@ def load_dotenv_if_present(env_file: Path) -> None:
             value = value.strip().strip('"').strip("'")
             if key and key not in os.environ:
                 os.environ[key] = value
-
-
-def get_git_sha() -> str:
-    try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True
-        ).strip()
-    except Exception:
-        return "unknown"
-
-
-def sha256_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            h.update(chunk)
-    return h.hexdigest()
 
 
 def connect_read_only():
