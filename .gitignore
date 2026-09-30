@@ -1,0 +1,66 @@
+# --- Secrets & credentials ---
+.env
+.env.*
+*.pem
+*.key
+secrets/
+credentials.json
+*.credentials
+
+# --- Local datasets & data artefacts ---
+# Dataset PAYLOADS are never committed. Snapshot PROVENANCE metadata
+# (manifest.yaml, schema.json, checksums, README.md, Data Cards) lives
+# alongside the payload and IS tracked — see data/raw/README.md for the
+# per-snapshot layout convention. Only the payload/ subfolder is ignored:
+# we ignore the known payload LOCATION, not every file of a common data
+# extension, so a legitimate tracked artefact (a CSV data dictionary, a
+# small reviewed fixture) outside payload/ is never silently hidden.
+data/raw/**/payload/
+data/processed/**/payload/
+data/synthetic/**/payload/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.Python
+build/
+dist/
+.venv/
+venv/
+env/
+# .python-version is intentionally tracked — pinning the interpreter
+# version supports this repo's reproducibility requirements
+# (see research/experiment-conventions.md).
+
+# --- Notebook checkpoints ---
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# --- Experiment outputs & model artefacts ---
+experiments/**/outputs/
+experiments/**/runs/
+experiments/**/*.ckpt
+experiments/**/*.pt
+experiments/**/*.pkl
+experiments/**/*.joblib
+mlruns/
+wandb/
+reports/**/generated/
+
+# --- Temporary / scratch ---
+*.tmp
+*.log
+.DS_Store
+tmp/
+scratch/
+
+# --- Editors / tooling ---
+.idea/
+.vscode/
+*.swp
+
+# --- Claude Code session artifacts ---
+.claude/
