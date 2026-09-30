@@ -1,0 +1,38 @@
+{
+  "processed_id": "ps-dataset-20260930-v001-processed",
+  "derived_from_raw_snapshot": "ps-dataset-20260930-v001",
+  "payload_file": "payload/bangalore_residential_sale_processed.csv",
+  "format": "csv",
+  "row_count": 1735,
+  "fields": [
+    {"name": "research_id", "type": "string", "notes": "sha256(production id)[:16]. Deterministic but not reversible from this dataset alone; replaces the production id/listing_number, which are not carried into this dataset."},
+    {"name": "snapshot_id", "type": "string", "notes": "Constant 'ps-dataset-20260930-v001' — which raw snapshot this row was derived from."},
+    {"name": "property_type", "type": "string", "notes": "apartment | villa | house."},
+    {"name": "listing_family", "type": "string", "notes": "Constant 'RESIDENTIAL' by cohort construction."},
+    {"name": "advertised_price_paise", "type": "int64", "notes": "TARGET. Advertised/listing price in paise. This is NOT a verified completed transaction price — see governance/data-card-v1.md. Rows without a usable price (price_status != 'NUMERIC' or price_paise NULL) were dropped before this dataset was built (2 of 1737 raw rows)."},
+    {"name": "built_area_sqft", "type": "float", "notes": "Normalised from property_listings.built_area (+ built_area_unit); the 1 sqm-denominated row was converted at 1 sqm = 10.7639104167 sqft. 0% missing."},
+    {"name": "bedrooms", "type": "int (nullable)", "notes": "0% missing."},
+    {"name": "bathrooms", "type": "int (nullable)", "notes": "~33.7% missing (586/1737 raw rows; proportionally similar in the 1735-row processed set)."},
+    {"name": "property_age", "type": "string (nullable)", "notes": "~53.7% missing."},
+    {"name": "facing", "type": "string (nullable)", "notes": "~39.0% missing."},
+    {"name": "latitude_rounded", "type": "float", "notes": "Latitude rounded to 2 decimal places (~1.1km grid) for privacy. Original exact latitude exists only in the raw snapshot (data/raw/), which is itself gitignored and not distributed. Use canonical_area_key/canonical_area_name as the primary location signal; request the raw snapshot only if an experiment specifically needs finer resolution and can justify it."},
+    {"name": "longitude_rounded", "type": "float", "notes": "Same treatment and caveat as latitude_rounded."},
+    {"name": "canonical_area_key", "type": "string", "notes": "Canonical Area identity (public.areas.area_key), not free-text locality."},
+    {"name": "canonical_area_name", "type": "string", "notes": "Human-readable canonical Area name."},
+    {"name": "canonical_city_name", "type": "string", "notes": "Constant 'Bangalore' by cohort construction."},
+    {"name": "provenance_seller_type", "type": "string", "notes": "Constant 'dealer' for 100% of this cohort. Kept as audit/provenance context, NOT a default predictive feature — see governance/data-card-v1.md limitations. A model trained naively on this column would learn nothing generalisable, since it never varies in this snapshot."},
+    {"name": "provenance_trust_tier", "type": "string", "notes": "Constant 'D' for 100% of this cohort. Same caveat as provenance_seller_type."},
+    {"name": "provenance_created_at", "type": "timestamp", "notes": "All rows share one bulk-load timestamp (2026-07-02T20:27:06.444759Z). Do NOT use as a listing-age or recency feature — it reflects when this data was loaded into production, not when any listing was organically created."},
+    {"name": "provenance_updated_at", "type": "timestamp", "notes": "Spans a few hours after created_at (bulk-load + resolution pass). Same caveat: not organic update activity."}
+  ],
+  "dropped_from_raw": [
+    {"name": "id / listing_number", "reason": "replaced by research_id to avoid trivial production linkage"},
+    {"name": "price / price_unit", "reason": "superseded by advertised_price_paise, the canonical field"},
+    {"name": "price_status", "reason": "used only as a filter (NUMERIC + non-null price_paise); not needed downstream once filtered"},
+    {"name": "status / listing_purpose / is_valid / is_duplicate / archived_at", "reason": "constant by cohort construction (LIVE / sale / true / false / NULL) — no information content in this dataset"},
+    {"name": "area_sqft / super_built_area / super_built_area_unit", "reason": "100% null for this cohort"},
+    {"name": "floor_number / total_floors / furnishing_status", "reason": "100% null for this cohort"},
+    {"name": "quality_score", "reason": "100% null for this cohort (never computed)"},
+    {"name": "area_label", "reason": "free-text locality; canonical_area_key/canonical_area_name is the documented preferred identity"}
+  ]
+}

@@ -13,17 +13,20 @@ containing:
 ```text
 data/raw/ps-dataset-20260930-v001/
   README.md          what this snapshot is, how/when it was taken, known caveats
-  manifest.yaml       source, extraction date, filters/queries applied, row/field counts
+  manifest.yaml       source, extraction date, filters/queries applied, row/field
+                       counts, and a sha256 checksum of the payload file(s) — issue
+                       #2 records the checksum inside manifest.yaml rather than a
+                       separate checksums.txt; either is acceptable, but pick one
+                       and keep the docs and the generator code agreeing on it
   schema.json          field names, types, and what each one means
-  checksums.txt        hashes of the payload files, to detect drift/corruption
   payload/              the actual data files — gitignored, never committed
 ```
 
 - **`payload/` is gitignored.** The data itself never goes into version
-  control. Everything else above it — the README, manifest, schema, and
-  checksums — is provenance/documentation and **is tracked**, so a
-  snapshot's existence, shape, and history are reviewable without
-  needing the data itself.
+  control. Everything else above it — the README, manifest, and schema —
+  is provenance/documentation and **is tracked**, so a snapshot's
+  existence, shape, and history are reviewable without needing the data
+  itself.
 - Nothing in this folder is edited in place. If a snapshot turns out to
   be wrong, take a new versioned snapshot — don't patch the old one.
 - A snapshot may still contain sensitive information even after

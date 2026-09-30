@@ -1,0 +1,5 @@
+# Pinned dependencies for tools/dataset/ (export_snapshot.py, prepare_dataset.py).
+# Install with: pip install -r tools/dataset/requirements.txt
+# Interpreter version is pinned separately at the repo root in .python-version.
+psycopg2-binary==2.9.12
+pandas==3.0.2
