@@ -8,8 +8,8 @@ source:
     - public.cities
   connection: read-only (conn.set_session(readonly=True))
 extraction:
-  extracted_at_utc: "2026-09-30T18:51:08.975613+00:00"
-  code_commit_sha: 5288b2d0f7a3d257a83b9f2f109073089feeda74
+  extracted_at_utc: "2026-09-30T19:18:43.009016+00:00"
+  code_commit_sha: d00ae67b12e97e5e1e6cc27c66c1dda78892cb4d
 cohort:
   description: Bangalore residential listings for sale (LIVE, non-duplicate, valid, non-archived)
   predicate: >
