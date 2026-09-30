@@ -60,3 +60,6 @@ scratch/
 .idea/
 .vscode/
 *.swp
+
+# --- Claude Code session artifacts ---
+.claude/

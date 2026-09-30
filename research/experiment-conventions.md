@@ -22,7 +22,9 @@ model:      MODEL-<task>-v001
 - `<topic>` — short lowercase slug naming the research area, matching an
   `experiments/` subfolder where possible: `explainability`,
   `counterfactuals`, `fairness`, `neuro_symbolic`, `safety`, or
-  `baseline`.
+  `baseline`. Note: `experiments/baseline/` doesn't exist yet as of
+  issue #1 — it's created when the first baseline model experiment is
+  actually run (expected around issue #3), not before.
 - `<task>` — short lowercase slug naming what the model predicts, e.g.
   `price`, `price-band`.
 
