@@ -6,9 +6,9 @@ This is a **learning and research environment** for exploring what
 "responsible AI" actually means when applied to a real-feeling problem:
 helping people understand property prices and property decisions.
 
-It is **not** PropertySignal the product, and nothing here talks to
-PropertySignal's production systems or production data. It is a place
-to build, break, and study small experiments — a price-prediction model,
+It is **not** PropertySignal the product, and no experiment in this lab
+ever queries PropertySignal's live production systems directly. It is a
+place to build, break, and study small experiments — a price-prediction model,
 an explanation of that model's output, a check for unfair bias, a rule
 that catches when the model shouldn't be trusted — and to write down
 honestly what was learned each time, including when something didn't
@@ -38,12 +38,65 @@ Three practical reasons:
    responsible-AI practice — not just a folder of notebooks nobody can
    re-run six months later.
 
+## Project charter
+
+**Intended research use.** Studying responsible-AI techniques
+(explainability, counterfactuals, fairness, neuro-symbolic rule
+checking, safety/OOD detection) against property-price-style data drawn
+from versioned PropertySignal research snapshots, for MSc Applied AI
+coursework and for PropertySignal's own internal learning about where
+AI could help or harm its domain.
+
+**Non-intended uses.** This lab is not for: generating real valuations,
+lending, or legal advice for any actual buyer, seller, lender, or
+lawyer; informing production PropertySignal features directly (findings
+must go through separate review before that could happen); or any use
+that requires inferring protected characteristics (see
+`governance/research-principles.md`).
+
+**Primary research questions.**
+- Where does a plausible price-estimation model actually go wrong, and
+  for whom?
+- Can an explanation method be trusted to describe a model's behaviour
+  accurately, and does that explanation survive being handed to a
+  non-technical reader?
+- Does a model (or its ranking/exposure behaviour) treat otherwise
+  similar properties differently depending on location, and can that be
+  distinguished from a real, defensible price driver?
+- Can a model be made to recognise when it's out of its depth, rather
+  than answering confidently and wrongly?
+
+**What "success" means for the lab.** Not model accuracy. Success is: a
+risk that was hypothesised in `governance/risk-register.md` gets
+actually measured (with evidence, not assertion); a negative or failed
+experiment is recorded honestly instead of hidden; and each issue leaves
+behind something reproducible and understandable enough that someone
+else — including future-me — could pick it up without re-deriving it
+from scratch.
+
 ## This is a research/learning environment, not production PropertySignal
 
-Worth saying plainly, because it shapes every decision in this repo:
+Worth saying plainly, because it shapes every decision in this repo. The
+safety boundary is precise, not a blanket "no production data ever":
 
-- No experiment here connects to a production database or production
-  credentials. Ever. (See `governance/research-principles.md`.)
+```text
+experiments never query the live production DB directly
+        ↓
+an approved, read-only export/snapshot may be derived from production data
+        ↓
+experiments consume only the versioned snapshot — never a live connection
+```
+
+- No experiment, notebook, or script in this repo holds production
+  database credentials or a live connection to production systems. Ever.
+  (See `governance/research-principles.md`.)
+- A versioned snapshot (see below) *may* be derived from production data
+  via an approved, read-only export — that's what issue #2 sets up. Once
+  taken, a snapshot is treated as its own artefact: fixed, dated, and
+  independently subject to data-minimisation and the restrictions in
+  `governance/research-principles.md` (e.g. it may still contain
+  sensitive information and must be handled accordingly — see R11 in
+  `governance/risk-register.md`).
 - No output from this lab is advice a real buyer, seller, lender, or
   lawyer should act on. Everything here is illustrative.
 - Nothing here is a commitment that PropertySignal the product will ever
@@ -52,10 +105,10 @@ Worth saying plainly, because it shapes every decision in this repo:
 
 ## How PropertySignal data becomes a research snapshot
 
-Live production data never enters an experiment directly. Instead, a
-**versioned snapshot** is taken at a point in time — an export, not a
-connection — and everything downstream is built from that fixed,
-dated snapshot:
+Production data reaches this lab only as a **versioned snapshot**: an
+approved, read-only export taken at a point in time — never a live
+connection — and everything downstream is built from that fixed, dated
+snapshot:
 
 ```text
 PropertySignal source data
@@ -88,11 +141,14 @@ Each stage is a real folder in this repo:
 | Conventions that tie it together | `research/experiment-conventions.md` |
 | Optional research demo | `demo/` |
 
-How a snapshot is actually produced, anonymised, and versioned is the
-subject of **issue #2** — this issue only establishes the convention
-(`research/experiment-conventions.md`) and the rule that it must always
-be a snapshot, never a live connection
-(`governance/research-principles.md`).
+How a snapshot is actually produced, minimised/de-identified, and
+versioned is the subject of **issue #2** — this issue only establishes
+the convention (`research/experiment-conventions.md`) and the rule that
+experiments always consume a snapshot, never a live connection
+(`governance/research-principles.md`). "De-identified" is not the same
+as "safe to publish": a research snapshot may still be sensitive (see
+R11 in `governance/risk-register.md`), and issue #2 is expected to
+document exactly what minimisation was applied, not merely assert it.
 
 ## How experiments flow: data → model → explanation/rules/fairness/safety → evidence
 

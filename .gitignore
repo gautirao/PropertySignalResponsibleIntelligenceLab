@@ -8,17 +8,22 @@ credentials.json
 *.credentials
 
 # --- Local datasets & data artefacts ---
-data/raw/*
-!data/raw/README.md
-data/processed/*
-!data/processed/README.md
-data/synthetic/*
-!data/synthetic/README.md
+# Dataset PAYLOADS are never committed. Snapshot PROVENANCE metadata
+# (manifest.yaml, schema.json, checksums, README.md, Data Cards) lives
+# alongside the payload and IS tracked — see data/raw/README.md for the
+# per-snapshot layout convention. Only the payload/ subfolder is ignored.
+data/raw/**/payload/
+data/processed/**/payload/
+data/synthetic/**/payload/
 *.csv
 *.parquet
 *.db
 *.sqlite
 *.sqlite3
+# Small, deliberately-safe fixture files (e.g. a synthetic toy example
+# checked in for a test or a doc) are exempt from the payload extensions
+# above when placed under a fixtures/ directory — review before adding.
+!**/fixtures/**
 
 # --- Python ---
 __pycache__/
@@ -32,7 +37,9 @@ dist/
 .venv/
 venv/
 env/
-.python-version
+# .python-version is intentionally tracked — pinning the interpreter
+# version supports this repo's reproducibility requirements
+# (see research/experiment-conventions.md).
 
 # --- Notebook checkpoints ---
 .ipynb_checkpoints/
