@@ -117,14 +117,14 @@ dedicated export tooling (issue #2)
 
 ## How PropertySignal data becomes a research snapshot
 
-Production data reaches this lab only as a **versioned snapshot**: an
-approved, read-only export taken at a point in time — never a live
-connection — and everything downstream is built from that fixed, dated
-snapshot:
+Production data reaches this lab only as a **versioned snapshot**,
+produced by the dedicated export tool from issue #2 — the one place a
+controlled, read-only production connection is permitted — and
+everything downstream is built from that fixed, dated snapshot:
 
 ```text
 PropertySignal source data
-        ↓  (extract — never a live connection)
+        ↓  (controlled read-only extraction, via dedicated export tooling only)
 versioned research snapshot        e.g. ps-dataset-20260930-v001
         ↓
 experiments
@@ -156,8 +156,8 @@ Each stage is a real folder in this repo:
 How a snapshot is actually produced, minimised/de-identified, and
 versioned is the subject of **issue #2** — this issue only establishes
 the convention (`research/experiment-conventions.md`) and the rule that
-experiments always consume a snapshot, never a live connection
-(`governance/research-principles.md`). "De-identified" is not the same
+experiments always consume a snapshot and never open their own
+production connection (`governance/research-principles.md`). "De-identified" is not the same
 as "safe to publish": a research snapshot may still be sensitive (see
 R11 in `governance/risk-register.md`), and issue #2 is expected to
 document exactly what minimisation was applied, not merely assert it.
@@ -281,6 +281,16 @@ Written for future-me revising MSc material, not just for this repo:
 
 ## License / status
 
-Research and learning artefacts only. No production code, no production
-data, no production credentials. See `governance/research-principles.md`
-for the rules everything in this repository must follow.
+Research and learning artefacts only — not production PropertySignal
+code. The guarantees that hold, end to end:
+
+```text
+no production credentials are ever committed to this repository
+no experiment, notebook, or analysis code connects to production
+only dedicated, read-only export tooling (issue #2) may connect,
+        as a controlled extraction step, with externally supplied credentials
+snapshot payloads are gitignored and restricted to the lab, never committed
+```
+
+See `governance/research-principles.md` for the rules everything in this
+repository must follow.
