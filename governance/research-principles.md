@@ -9,11 +9,22 @@ suggestions.
 ## Data
 
 1. **Never run experiments directly against the production database.**
-   All experiments read from a versioned snapshot under `data/raw/` (or
-   a derivative in `data/processed/`), never a live connection to
-   PropertySignal's production systems. There is no production
-   credential or connection string anywhere in this repository, and
-   there must never be one.
+   All experiments, notebooks, and analysis code read from a versioned
+   snapshot under `data/raw/` (or a derivative in `data/processed/`),
+   never a live connection to PropertySignal's production systems. This
+   applies without exception to anything that does modelling, analysis,
+   or experiment logic.
+
+   The one deliberate exception is **dedicated export tooling**
+   (introduced in issue #2): a small, separate piece of code whose only
+   job is a read-only, credentialed extraction from production, written
+   out immediately as a versioned snapshot. Its credentials are supplied
+   externally at run time (e.g. an environment variable) and must never
+   be committed to this repository. It must not contain, call, or be
+   called by any experiment, modelling, or analysis code — its output
+   (the snapshot) is the only thing that crosses that boundary. There is
+   no production credential or connection string committed anywhere in
+   this repository, and there must never be one.
 2. **Use versioned snapshots.** Every dataset used in an experiment has
    an explicit version identifier (see
    `research/experiment-conventions.md`). "I used the data" is not a

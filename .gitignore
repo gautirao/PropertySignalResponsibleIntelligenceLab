@@ -11,19 +11,13 @@ credentials.json
 # Dataset PAYLOADS are never committed. Snapshot PROVENANCE metadata
 # (manifest.yaml, schema.json, checksums, README.md, Data Cards) lives
 # alongside the payload and IS tracked — see data/raw/README.md for the
-# per-snapshot layout convention. Only the payload/ subfolder is ignored.
+# per-snapshot layout convention. Only the payload/ subfolder is ignored:
+# we ignore the known payload LOCATION, not every file of a common data
+# extension, so a legitimate tracked artefact (a CSV data dictionary, a
+# small reviewed fixture) outside payload/ is never silently hidden.
 data/raw/**/payload/
 data/processed/**/payload/
 data/synthetic/**/payload/
-*.csv
-*.parquet
-*.db
-*.sqlite
-*.sqlite3
-# Small, deliberately-safe fixture files (e.g. a synthetic toy example
-# checked in for a test or a doc) are exempt from the payload extensions
-# above when placed under a fixtures/ directory — review before adding.
-!**/fixtures/**
 
 # --- Python ---
 __pycache__/

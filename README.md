@@ -80,19 +80,31 @@ Worth saying plainly, because it shapes every decision in this repo. The
 safety boundary is precise, not a blanket "no production data ever":
 
 ```text
-experiments never query the live production DB directly
-        ↓
-an approved, read-only export/snapshot may be derived from production data
-        ↓
-experiments consume only the versioned snapshot — never a live connection
+experiment / notebook / analysis code
+        → NEVER connects to production, under any circumstances
+
+dedicated export tooling (issue #2)
+        → may open a read-only production connection, as an explicit,
+          controlled extraction step
+        → credentials are supplied externally at run time, never
+          committed to this repository
+        → writes a versioned snapshot and nothing else
+        → experiments and notebooks then consume only that snapshot
 ```
 
-- No experiment, notebook, or script in this repo holds production
-  database credentials or a live connection to production systems. Ever.
-  (See `governance/research-principles.md`.)
-- A versioned snapshot (see below) *may* be derived from production data
-  via an approved, read-only export — that's what issue #2 sets up. Once
-  taken, a snapshot is treated as its own artefact: fixed, dated, and
+- No experiment, notebook, or analysis code anywhere in this repo ever
+  holds a production database connection or production credentials.
+  That line is absolute. (See `governance/research-principles.md`.)
+- The *only* code permitted to touch production is a small, dedicated
+  piece of export tooling — built in issue #2 — whose sole job is to
+  take a read-only, credentialed extraction and write it out as a
+  versioned snapshot. Its credentials are supplied externally (e.g. an
+  environment variable at run time) and are never committed; it has no
+  other responsibility and is not where any modelling, analysis, or
+  experiment logic lives.
+- A versioned snapshot (see below) *may* therefore be derived from
+  production data via that approved, read-only export. Once taken, a
+  snapshot is treated as its own artefact: fixed, dated, and
   independently subject to data-minimisation and the restrictions in
   `governance/research-principles.md` (e.g. it may still contain
   sensitive information and must be handled accordingly — see R11 in
