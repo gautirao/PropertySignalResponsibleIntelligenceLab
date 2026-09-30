@@ -1,0 +1,62 @@
+# --- Secrets & credentials ---
+.env
+.env.*
+*.pem
+*.key
+secrets/
+credentials.json
+*.credentials
+
+# --- Local datasets & data artefacts ---
+data/raw/*
+!data/raw/README.md
+data/processed/*
+!data/processed/README.md
+data/synthetic/*
+!data/synthetic/README.md
+*.csv
+*.parquet
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.Python
+build/
+dist/
+.venv/
+venv/
+env/
+.python-version
+
+# --- Notebook checkpoints ---
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# --- Experiment outputs & model artefacts ---
+experiments/**/outputs/
+experiments/**/runs/
+experiments/**/*.ckpt
+experiments/**/*.pt
+experiments/**/*.pkl
+experiments/**/*.joblib
+mlruns/
+wandb/
+reports/**/generated/
+
+# --- Temporary / scratch ---
+*.tmp
+*.log
+.DS_Store
+tmp/
+scratch/
+
+# --- Editors / tooling ---
+.idea/
+.vscode/
+*.swp
