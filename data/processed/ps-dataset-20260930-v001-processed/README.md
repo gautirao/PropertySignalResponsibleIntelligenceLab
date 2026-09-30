@@ -8,10 +8,18 @@ database access.
 ## Reproduce
 
 ```bash
+pip install -r tools/dataset/requirements.txt
 # requires data/raw/ps-dataset-20260930-v001/payload/... to already exist
 # (see data/raw/ps-dataset-20260930-v001/README.md); no SUPABASE_* vars needed here
 python3 tools/dataset/prepare_dataset.py
 ```
+
+This processed dataset is **immutable** in the same way as the raw
+snapshot it's derived from: `prepare_dataset.py` refuses to overwrite an
+already-taken `manifest.yaml`/payload for this processed id — see
+`tools/dataset/README.md`. A fresh raw snapshot gets a new
+`SNAPSHOT_ID`, which yields a new `PROCESSED_ID` derived from it
+automatically.
 
 ## Row counts
 
@@ -27,8 +35,11 @@ python3 tools/dataset/prepare_dataset.py
 See `manifest.yaml` for the exact transformation list and
 `schema.json` for field-by-field detail. In short:
 
-- production `id` / `listing_number` replaced by a non-reversible
-  `research_id`;
+- production `id` / `listing_number` replaced by a pseudonymous
+  `research_id` (sha256 of the production id, truncated) — not reversible
+  from this dataset alone, but recomputable by anyone who already holds
+  production ids, so it removes casual/accidental linkage, not linkage by
+  someone with the source data;
 - `price_paise` renamed `advertised_price_paise` (never "market value" /
   "sale price" — see `governance/data-card-v1.md`);
 - `built_area` (+ unit) normalised into a single `built_area_sqft`;

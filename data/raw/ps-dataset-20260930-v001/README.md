@@ -8,16 +8,22 @@ Supabase/PostgreSQL database by the dedicated exporter
 ## Reproduce
 
 ```bash
+pip install -r tools/dataset/requirements.txt
 # repository-root .env must contain SUPABASE_DB_HOST, SUPABASE_DB_PORT,
 # SUPABASE_DB_NAME, SUPABASE_DB_USER, SUPABASE_DB_PASSWORD (never committed)
 python3 tools/dataset/export_snapshot.py
 ```
 
-This overwrites `payload/property_listings_bangalore_residential_sale.csv`
-and `manifest.yaml` with a fresh extraction using the same cohort predicate.
-Row counts will differ from this snapshot's manifest if production data has
-changed since 2026-09-30 — that is expected, not a bug; re-run and compare
-manifests rather than assuming this snapshot is still current.
+This snapshot is **immutable**: `export_snapshot.py` refuses to overwrite
+`payload/property_listings_bangalore_residential_sale.csv` or
+`manifest.yaml` once they exist for this snapshot id — see
+`tools/dataset/README.md`. Re-running the command above against an
+already-taken snapshot is expected to fail with that immutability error;
+that's working as intended, not a bug. A fresh extraction against
+whatever production looks like today requires a **new** snapshot id
+(bump `SNAPSHOT_ID` in `tools/dataset/_common.py`), so that a row-count
+difference from changed production data is visible as a new, separately
+versioned snapshot rather than a silent overwrite of this one.
 
 ## What this is
 

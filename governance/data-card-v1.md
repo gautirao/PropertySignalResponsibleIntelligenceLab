@@ -96,8 +96,12 @@ excluded and why:
   `khata_number`, `property_tax_pid`, `survey_number`, `video_url`.
 - **Production keys** (`id`, `listing_number`) are in the raw snapshot
   only (for traceability) and replaced in the processed dataset by a
-  non-reversible `research_id` (`sha256(id)[:16]`), so the processed
-  dataset cannot be trivially joined back to production.
+  pseudonymous `research_id` (`sha256(id)[:16]`). This is pseudonymisation,
+  not anonymisation: `research_id` is not reversible back to the
+  production id from the processed dataset alone, but anyone who already
+  holds production ids can recompute the same hash and re-link a row —
+  it prevents casual/accidental linkage, not linkage by someone with the
+  source data.
 - **Exact coordinates** are treated as a quasi-identifier: the raw
   snapshot (gitignored, not distributed) carries exact `latitude`/
   `longitude`; the processed dataset carries only `latitude_rounded`/
@@ -200,12 +204,15 @@ Written for future-me revising MSc material, not just for this repo:
   `built_area` is 100% populated) wasn't guessable from the schema alone
   — the schema has both columns and nothing tells you which one is
   actually used for which property family without querying real data.
-- **Separating the export step from the preparation step is a real
-  control, not ceremony.** Because `prepare_dataset.py` cannot import
-  `psycopg2` or hold a connection, a future change to cleaning/feature
-  logic literally cannot regain production access by accident — the
-  boundary is enforced by what the file is allowed to import, not just by
-  a comment saying not to.
+- **A policy boundary is not the same as a mechanically enforced one.**
+  Separating the export step from the preparation step is a real,
+  binding rule — `prepare_dataset.py` must never import `psycopg2` or
+  hold a connection — but as of this dataset, that is enforced by
+  documentation and review, not by a test, lint rule, or CI check. A
+  future edit could still violate it and nothing would fail
+  automatically; catching that is currently a reviewer's job, and adding
+  automated enforcement is a real, separate improvement this dataset's
+  work surfaced rather than solved.
 - **Reproducibility needs a counted, not silent, definition of "dropped."**
   The 2-row price anomaly could have been silently filtered by a `dropna()`
   and nobody would have noticed. Recording the count in the manifest and

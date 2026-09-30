@@ -12,7 +12,7 @@ is retained just because the source table happened to have the column.
 
 | Field | Unit / type | Source | Transformation | Null semantics |
 |---|---|---|---|---|
-| `research_id` | string | `property_listings.id` | `sha256(id)[:16]` | Never null. Not a production key — exists only to give each row a stable identifier without carrying the production `id`/`listing_number` into this dataset. |
+| `research_id` | string | `property_listings.id` | `sha256(id)[:16]` | Never null. Pseudonymous, not anonymous: not reversible to the production id from this dataset alone, but anyone holding production ids can recompute the same hash and re-link a row — see `governance/data-card-v1.md`. |
 | `snapshot_id` | string | (generated) | constant | Never null; identifies which raw snapshot this row was derived from. |
 | `property_type` | categorical | `property_listings.property_type` | none | Never null. `apartment` \| `villa` \| `house` in this cohort. |
 | `listing_family` | categorical | `property_listings.listing_family` | none | Never null; constant `RESIDENTIAL` by cohort construction. |
@@ -41,7 +41,7 @@ processed dataset:
 
 | Field | Why raw-only |
 |---|---|
-| `id`, `listing_number` | Production keys; replaced by `research_id` to avoid trivial linkage back to production. |
+| `id`, `listing_number` | Production keys; replaced by a pseudonymous `research_id` so this dataset alone cannot be used to look up production — see `governance/data-card-v1.md` for what this does and doesn't protect against. |
 | `price`, `price_unit`, `price_status` | Superseded by `advertised_price_paise` once the price-availability filter is applied. |
 | `status`, `listing_purpose`, `is_valid`, `is_duplicate`, `archived_at` | Constant by cohort construction (`LIVE` / `sale` / `true` / `false` / `NULL`) — no information content once the cohort is fixed. |
 | `area_sqft`, `super_built_area`, `super_built_area_unit` | 100% null for this cohort. |
