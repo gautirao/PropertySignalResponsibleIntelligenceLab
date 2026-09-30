@@ -26,7 +26,14 @@ from pathlib import Path
 
 import psycopg2
 
-from _common import REPO_ROOT, SNAPSHOT_ID, get_git_sha, refuse_if_already_taken, sha256_file
+from _common import (
+    REPO_ROOT,
+    SNAPSHOT_ID,
+    get_git_sha,
+    read_manifest_checksum,
+    sha256_file,
+    snapshot_action,
+)
 
 SNAPSHOT_DIR = REPO_ROOT / "data" / "raw" / SNAPSHOT_ID
 PAYLOAD_PATH = SNAPSHOT_DIR / "payload" / "property_listings_bangalore_residential_sale.csv"
@@ -149,6 +156,25 @@ def connect_read_only():
     return conn
 
 
+def run_extraction():
+    conn = connect_read_only()
+    cur = conn.cursor()
+    cur.execute(COHORT_SQL)
+    columns = [desc[0] for desc in cur.description]
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return columns, rows
+
+
+def write_payload_csv(path: Path, columns, rows) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(columns)
+        writer.writerows(rows)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -165,27 +191,66 @@ def main():
     )
     args = parser.parse_args()
 
-    refuse_if_already_taken(MANIFEST_PATH, SNAPSHOT_ID, args.allow_overwrite)
+    action = snapshot_action(MANIFEST_PATH, PAYLOAD_PATH, args.allow_overwrite)
+
+    if action == "verify":
+        actual = sha256_file(PAYLOAD_PATH)
+        recorded = read_manifest_checksum(MANIFEST_PATH)
+        if actual == recorded:
+            print(
+                f"Snapshot '{SNAPSHOT_ID}' already taken; existing payload checksum "
+                "matches the committed manifest. Nothing to do."
+            )
+            return
+        print(
+            f"ERROR: {PAYLOAD_PATH} exists but its sha256 ({actual}) does not match "
+            f"the checksum recorded in {MANIFEST_PATH} ({recorded}). The local payload "
+            "may be corrupted or stale — delete it and re-run to reproduce it from "
+            "the committed manifest, or investigate before proceeding. This script "
+            "will not silently overwrite a mismatched payload.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     load_dotenv_if_present(Path(args.env_file))
     for var in REQUIRED_ENV_VARS:
         require_env(var)  # fail loudly before connecting if anything is missing
 
+    if action == "reproduce":
+        # Manifest exists (this snapshot was already taken and committed)
+        # but the payload isn't on disk (e.g. a fresh clone). Regenerate
+        # it to a temp path and only install it if it reproduces the
+        # exact committed checksum — never rewrite the manifest here.
+        columns, rows = run_extraction()
+        tmp_path = PAYLOAD_PATH.with_suffix(".tmp")
+        write_payload_csv(tmp_path, columns, rows)
+        actual = sha256_file(tmp_path)
+        recorded = read_manifest_checksum(MANIFEST_PATH)
+        if actual != recorded:
+            tmp_path.unlink()
+            print(
+                f"ERROR: re-extracting snapshot '{SNAPSHOT_ID}' from production today "
+                f"produced a payload with sha256 {actual}, which does not match the "
+                f"checksum committed in {MANIFEST_PATH} ({recorded}). Production data "
+                "has changed since this snapshot was taken, so it can no longer be "
+                "reproduced byte-for-byte. Take a new snapshot id instead of trying to "
+                "reproduce this one.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        tmp_path.replace(PAYLOAD_PATH)
+        print(
+            f"Reproduced payload for snapshot '{SNAPSHOT_ID}' matches the committed "
+            f"manifest checksum; installed at {PAYLOAD_PATH.relative_to(REPO_ROOT)}."
+        )
+        print("No credential values were printed.")
+        return
+
+    # action == "create": no manifest exists yet for this id, or
+    # --allow-overwrite was passed for pre-finalisation iteration.
     extracted_at = datetime.now(timezone.utc)
-
-    conn = connect_read_only()
-    cur = conn.cursor()
-    cur.execute(COHORT_SQL)
-    columns = [desc[0] for desc in cur.description]
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    PAYLOAD_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(PAYLOAD_PATH, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(columns)
-        writer.writerows(rows)
+    columns, rows = run_extraction()
+    write_payload_csv(PAYLOAD_PATH, columns, rows)
 
     checksum = sha256_file(PAYLOAD_PATH)
     row_count = len(rows)

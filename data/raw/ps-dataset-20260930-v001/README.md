@@ -14,16 +14,22 @@ pip install -r tools/dataset/requirements.txt
 python3 tools/dataset/export_snapshot.py
 ```
 
-This snapshot is **immutable**: `export_snapshot.py` refuses to overwrite
-`payload/property_listings_bangalore_residential_sale.csv` or
-`manifest.yaml` once they exist for this snapshot id — see
-`tools/dataset/README.md`. Re-running the command above against an
-already-taken snapshot is expected to fail with that immutability error;
-that's working as intended, not a bug. A fresh extraction against
-whatever production looks like today requires a **new** snapshot id
-(bump `SNAPSHOT_ID` in `tools/dataset/_common.py`), so that a row-count
-difference from changed production data is visible as a new, separately
-versioned snapshot rather than a silent overwrite of this one.
+This snapshot is **immutable**, but still reproducible from a fresh
+clone. `payload/...csv` is gitignored, so right after cloning this repo
+only `manifest.yaml` exists locally; running the command above in that
+state re-extracts from production and installs the result **only if its
+sha256 matches the checksum already committed in `manifest.yaml`** —
+it never rewrites the manifest. If both the manifest and payload already
+exist locally, the command instead just verifies the payload's checksum
+and exits without writing anything. See `tools/dataset/README.md` for
+the full create/verify/reproduce decision table, including
+`--allow-overwrite` (pre-finalisation iteration only).
+
+A fresh extraction against whatever production looks like *today* — as
+opposed to reproducing this exact snapshot — requires a **new** snapshot
+id (bump `SNAPSHOT_ID` in `tools/dataset/_common.py`), so that a
+row-count difference from changed production data is visible as a new,
+separately versioned snapshot rather than a silent overwrite of this one.
 
 ## What this is
 

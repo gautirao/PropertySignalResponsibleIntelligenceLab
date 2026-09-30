@@ -39,12 +39,20 @@ Run:
 """
 import argparse
 import hashlib
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 
-from _common import REPO_ROOT, SNAPSHOT_ID, get_git_sha, refuse_if_already_taken, sha256_file
+from _common import (
+    REPO_ROOT,
+    SNAPSHOT_ID,
+    get_git_sha,
+    read_manifest_checksum,
+    sha256_file,
+    snapshot_action,
+)
 
 RAW_DIR = REPO_ROOT / "data" / "raw" / SNAPSHOT_ID
 RAW_PAYLOAD = RAW_DIR / "payload" / "property_listings_bangalore_residential_sale.csv"
@@ -73,28 +81,31 @@ def built_area_to_sqft(row) -> float:
     raise ValueError(f"Unrecognised built_area_unit: {unit_value!r} — inspect before extending this mapping.")
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--allow-overwrite",
-        action="store_true",
-        help="Overwrite this processed dataset id's existing payload/manifest. Only for "
-        "iterating before it is committed as final — never use on an already-finalised "
-        "processed dataset; take a new snapshot id instead.",
-    )
-    args = parser.parse_args()
+PROCESSED_COLUMNS = [
+    "research_id",
+    "snapshot_id",
+    "property_type",
+    "listing_family",
+    "advertised_price_paise",
+    "built_area_sqft",
+    "bedrooms",
+    "bathrooms",
+    "property_age",
+    "facing",
+    "latitude_rounded",
+    "longitude_rounded",
+    "canonical_area_key",
+    "canonical_area_name",
+    "canonical_city_name",
+    "provenance_seller_type",
+    "provenance_trust_tier",
+    "provenance_created_at",
+    "provenance_updated_at",
+]
 
-    refuse_if_already_taken(MANIFEST_PATH, PROCESSED_ID, args.allow_overwrite)
 
-    if not RAW_PAYLOAD.exists():
-        raise SystemExit(
-            f"Raw snapshot not found at {RAW_PAYLOAD}. "
-            "Run tools/dataset/export_snapshot.py first (requires SUPABASE_* credentials)."
-        )
-
-    raw = pd.read_csv(RAW_PAYLOAD, dtype={"id": str})
-    raw_row_count = len(raw)
-
+def build_processed(raw: pd.DataFrame):
+    """Returns (processed_df, dropped_price_df). Pure transformation, no I/O."""
     # --- target availability: require a genuinely usable advertised price ---
     price_ok = (raw["price_status"] == "NUMERIC") & raw["price_paise"].notna()
     dropped_price = raw[~price_ok]
@@ -114,28 +125,81 @@ def main():
     df["canonical_city_name"] = df["canonical_city_name"]
     df["snapshot_id"] = SNAPSHOT_ID
 
-    processed_columns = [
-        "research_id",
-        "snapshot_id",
-        "property_type",
-        "listing_family",
-        "advertised_price_paise",
-        "built_area_sqft",
-        "bedrooms",
-        "bathrooms",
-        "property_age",
-        "facing",
-        "latitude_rounded",
-        "longitude_rounded",
-        "canonical_area_key",
-        "canonical_area_name",
-        "canonical_city_name",
-        "provenance_seller_type",
-        "provenance_trust_tier",
-        "provenance_created_at",
-        "provenance_updated_at",
-    ]
-    processed = df[processed_columns].sort_values("research_id").reset_index(drop=True)
+    processed = df[PROCESSED_COLUMNS].sort_values("research_id").reset_index(drop=True)
+    return processed, dropped_price
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--allow-overwrite",
+        action="store_true",
+        help="Overwrite this processed dataset id's existing payload/manifest. Only for "
+        "iterating before it is committed as final — never use on an already-finalised "
+        "processed dataset; take a new snapshot id instead.",
+    )
+    args = parser.parse_args()
+
+    action = snapshot_action(MANIFEST_PATH, PROCESSED_PAYLOAD, args.allow_overwrite)
+
+    if action == "verify":
+        actual = sha256_file(PROCESSED_PAYLOAD)
+        recorded = read_manifest_checksum(MANIFEST_PATH)
+        if actual == recorded:
+            print(
+                f"Processed dataset '{PROCESSED_ID}' already built; existing payload "
+                "checksum matches the committed manifest. Nothing to do."
+            )
+            return
+        print(
+            f"ERROR: {PROCESSED_PAYLOAD} exists but its sha256 ({actual}) does not "
+            f"match the checksum recorded in {MANIFEST_PATH} ({recorded}). The local "
+            "payload may be corrupted or stale — delete it and re-run to reproduce it "
+            "from the committed manifest, or investigate before proceeding.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    if not RAW_PAYLOAD.exists():
+        raise SystemExit(
+            f"Raw snapshot not found at {RAW_PAYLOAD}. "
+            "Run tools/dataset/export_snapshot.py first (requires SUPABASE_* credentials)."
+        )
+
+    raw = pd.read_csv(RAW_PAYLOAD, dtype={"id": str})
+    raw_row_count = len(raw)
+
+    if action == "reproduce":
+        # Manifest exists (this processed dataset was already built and
+        # committed) but the payload isn't on disk (e.g. a fresh clone).
+        # Rebuild it to a temp path and only install it if it reproduces
+        # the exact committed checksum — never rewrite the manifest here.
+        processed, _dropped_price = build_processed(raw)
+        tmp_path = PROCESSED_PAYLOAD.with_suffix(".tmp")
+        PROCESSED_PAYLOAD.parent.mkdir(parents=True, exist_ok=True)
+        processed.to_csv(tmp_path, index=False)
+        actual = sha256_file(tmp_path)
+        recorded = read_manifest_checksum(MANIFEST_PATH)
+        if actual != recorded:
+            tmp_path.unlink()
+            print(
+                f"ERROR: rebuilding processed dataset '{PROCESSED_ID}' from the current "
+                f"raw snapshot produced a payload with sha256 {actual}, which does not "
+                f"match the checksum committed in {MANIFEST_PATH} ({recorded}). Take a "
+                "new snapshot id instead of trying to reproduce this one.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        tmp_path.replace(PROCESSED_PAYLOAD)
+        print(
+            f"Reproduced payload for '{PROCESSED_ID}' matches the committed manifest "
+            f"checksum; installed at {PROCESSED_PAYLOAD.relative_to(REPO_ROOT)}."
+        )
+        return
+
+    # action == "create": no manifest exists yet for this id, or
+    # --allow-overwrite was passed for pre-finalisation iteration.
+    processed, dropped_price = build_processed(raw)
 
     PROCESSED_PAYLOAD.parent.mkdir(parents=True, exist_ok=True)
     processed.to_csv(PROCESSED_PAYLOAD, index=False)
@@ -163,7 +227,7 @@ counts:
   raw_row_count: {raw_row_count}
   dropped_missing_price_target: {len(dropped_price)}
   processed_row_count: {len(processed)}
-  processed_field_count: {len(processed_columns)}
+  processed_field_count: {len(PROCESSED_COLUMNS)}
 payload:
   path: payload/bangalore_residential_sale_processed.csv
   format: csv

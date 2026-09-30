@@ -46,25 +46,25 @@ python3 tools/dataset/export_snapshot.py
 python3 tools/dataset/prepare_dataset.py
 ```
 
-## Snapshots are immutable — re-running does NOT overwrite by default
+## Snapshots are immutable — but still reproducible from a fresh clone
 
-Both scripts refuse to run if a manifest already exists for the current
-snapshot id (see `refuse_if_already_taken` in `_common.py`), because a
-taken snapshot is a fixed, versioned artefact — see `data/raw/README.md`
-and `research/experiment-conventions.md` ("never reuse a dataset version
-for a different snapshot"). If you see that error:
+A taken snapshot is a fixed, versioned artefact — see
+`data/raw/README.md` and `research/experiment-conventions.md` ("never
+reuse a dataset version for a different snapshot"). Both scripts decide
+what to do based on what already exists for the current snapshot id (see
+`snapshot_action` in `_common.py`):
 
-- **You need a new snapshot of current production data** — bump
-  `SNAPSHOT_ID` in `_common.py` to a new dated/versioned id (e.g.
-  `ps-dataset-20261015-v002`) and re-run. Row counts may legitimately
-  differ from an older snapshot if production data changed; that's
-  expected, not a bug — compare `manifest.yaml` files rather than
-  assuming the old one is simply stale.
-- **You're iterating on this same snapshot before it's committed as
-  final** (e.g. fixing a bug in this script during development, before
-  the snapshot has been committed/merged) — re-run with
-  `--allow-overwrite`. Never use this flag to replace an
-  already-committed, finalised snapshot.
+| Manifest exists? | Payload exists? | `--allow-overwrite`? | Action |
+|---|---|---|---|
+| no | — | — | **create**: fresh extraction, writes payload + manifest. |
+| yes | yes | no | **verify**: checks the existing payload's sha256 against the committed manifest. Matches → prints and exits cleanly, nothing written. Mismatch → hard error (payload may be corrupted/stale); neither file is touched. |
+| yes | no | no | **reproduce**: this is the normal case right after a fresh `git clone`, since payloads are gitignored. Re-derives the payload to a temp file, compares its sha256 against the committed manifest, and only installs it if it matches exactly. The manifest is never rewritten in this path. A checksum mismatch here means the underlying data has genuinely changed since the snapshot was taken (e.g. production data changed for `export_snapshot.py`) — that's a hard failure telling you to take a new snapshot id, not something this script will paper over. |
+| yes | either | **yes** | **create** (forced): fully re-extracts and rewrites both payload and manifest. Only for iterating on this snapshot before it is committed as final — never use this to replace an already-committed, finalised snapshot; take a new snapshot id instead. |
+
+If you need a new snapshot of current production data (not just to
+reproduce this one), bump `SNAPSHOT_ID` in `_common.py` to a new
+dated/versioned id (e.g. `ps-dataset-20261015-v002`) and run without
+`--allow-overwrite` — that's a fresh "create", not an overwrite.
 
 ## Rules this tooling exists to enforce
 

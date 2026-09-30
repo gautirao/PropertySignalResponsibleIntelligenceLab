@@ -37,24 +37,50 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def refuse_if_already_taken(manifest_path: Path, snapshot_id: str, allow_overwrite: bool) -> None:
-    """Enforce snapshot immutability: refuse to silently overwrite a
-    manifest that already exists for this snapshot id.
+def read_manifest_checksum(manifest_path: Path) -> str:
+    """Extract the recorded payload sha256 from a hand-rolled manifest.yaml.
 
-    `--allow-overwrite` exists only for iterating on this snapshot before
-    it is committed/finalised (e.g. re-running after a bugfix during this
-    same PR). It must never be used to replace an already-committed,
-    finalised snapshot — take a new versioned snapshot id instead.
+    Each manifest has exactly one `sha256: <hex>` line under `payload:`.
+    Not a general YAML parser — good enough for this repo's own generated
+    manifest shape, and avoids adding a YAML dependency for one field.
     """
-    if manifest_path.exists() and not allow_overwrite:
-        print(
-            f"ERROR: {manifest_path} already exists for snapshot '{snapshot_id}'. "
-            "Snapshots are immutable once taken — see data/raw/README.md and "
-            "research/experiment-conventions.md ('never reuse a dataset version "
-            "for a different snapshot'). To take a new extraction, bump the "
-            "snapshot id in tools/dataset/_common.py to a new version. "
-            "If you are only iterating on this snapshot before it is committed "
-            "as final, re-run with --allow-overwrite.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    for line in manifest_path.read_text().splitlines():
+        stripped = line.strip()
+        if stripped.startswith("sha256:"):
+            return stripped.split("sha256:", 1)[1].strip()
+    raise ValueError(f"No 'sha256:' line found in {manifest_path}")
+
+
+def snapshot_action(manifest_path: Path, payload_path: Path, allow_overwrite: bool) -> str:
+    """Decide what an export/prepare script should do given existing state.
+
+    Snapshots are immutable once taken (see data/raw/README.md and
+    research/experiment-conventions.md: "never reuse a dataset version
+    for a different snapshot"), but a committed manifest with no local
+    payload (e.g. a fresh clone) must still be reproducible — see
+    issue #2's Definition of Done. Returns one of:
+
+    - "create"    — no manifest exists yet for this id, or the caller
+                     passed --allow-overwrite (pre-finalisation iteration
+                     only): do a full fresh extraction and (re)write both
+                     the payload and the manifest.
+    - "verify"     — manifest and payload both already exist: this
+                      snapshot is finalised and materialised. The caller
+                      must only verify the existing payload's checksum
+                      against the committed manifest, never rewrite
+                      either file.
+    - "reproduce"  — manifest exists but the payload is missing: the
+                      caller must regenerate the payload to a temporary
+                      path, compare its checksum against the committed
+                      manifest, and only install it (never rewrite the
+                      manifest) if the checksum matches. A mismatch means
+                      the source data has changed since this snapshot was
+                      taken and it can no longer be reproduced — that is
+                      a hard failure, not something to paper over by
+                      rewriting the manifest to match new data.
+    """
+    if allow_overwrite or not manifest_path.exists():
+        return "create"
+    if payload_path.exists():
+        return "verify"
+    return "reproduce"

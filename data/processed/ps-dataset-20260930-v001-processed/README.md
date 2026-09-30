@@ -14,12 +14,15 @@ pip install -r tools/dataset/requirements.txt
 python3 tools/dataset/prepare_dataset.py
 ```
 
-This processed dataset is **immutable** in the same way as the raw
-snapshot it's derived from: `prepare_dataset.py` refuses to overwrite an
-already-taken `manifest.yaml`/payload for this processed id — see
-`tools/dataset/README.md`. A fresh raw snapshot gets a new
-`SNAPSHOT_ID`, which yields a new `PROCESSED_ID` derived from it
-automatically.
+This processed dataset is **immutable**, but still reproducible from a
+fresh clone, in the same way as the raw snapshot it's derived from: if
+`manifest.yaml` exists but the gitignored payload doesn't (e.g. right
+after cloning), `prepare_dataset.py` rebuilds the payload from the raw
+snapshot and installs it only if its sha256 matches the checksum already
+committed in `manifest.yaml` — the manifest is never rewritten. See
+`tools/dataset/README.md` for the full create/verify/reproduce decision
+table. A fresh raw snapshot gets a new `SNAPSHOT_ID`, which yields a new
+`PROCESSED_ID` derived from it automatically.
 
 ## Row counts
 
